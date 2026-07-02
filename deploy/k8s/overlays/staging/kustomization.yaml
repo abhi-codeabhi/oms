@@ -1,0 +1,55 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: restorna-staging
+resources:
+  - ../../base
+
+images:
+  - name: ghcr.io/restorna/gateway
+    newTag: staging
+  - name: ghcr.io/restorna/identity
+    newTag: staging
+  - name: ghcr.io/restorna/tenant
+    newTag: staging
+  - name: ghcr.io/restorna/entitlements
+    newTag: staging
+  - name: ghcr.io/restorna/staff
+    newTag: staging
+  - name: ghcr.io/restorna/settings
+    newTag: staging
+  - name: ghcr.io/restorna/catalog
+    newTag: staging
+  - name: ghcr.io/restorna/ordering
+    newTag: staging
+  - name: ghcr.io/restorna/promotions
+    newTag: staging
+  - name: ghcr.io/restorna/kitchen
+    newTag: staging
+  - name: ghcr.io/restorna/billing
+    newTag: staging
+  - name: ghcr.io/restorna/floor
+    newTag: staging
+  - name: ghcr.io/restorna/servicerequests
+    newTag: staging
+  # --- M3 integration plane ---
+  - name: ghcr.io/restorna/connectorhub
+    newTag: staging
+  - name: ghcr.io/restorna/payments
+    newTag: staging
+  - name: ghcr.io/restorna/notifications
+    newTag: staging
+  - name: ghcr.io/restorna/aggregators
+    newTag: staging
+
+replicas:
+  - name: gateway
+    count: 2
+  - name: identity
+    count: 2
+
+patches:
+  - target: { kind: Ingress, name: restorna-gateway }
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.staging.restorna.example

@@ -1,0 +1,59 @@
+syntax = "proto3";
+package restorna.entitlements.v1;
+
+// EntitlementsService is the single source of truth for "what is this owner allowed
+// to do" — plans, quotas (limits), and feature flags. Everything constrained
+// (staff, outlets, tables, connectors) checks here before creating. Fully
+// configurable: plans + quotas are data, not code.
+
+message Plan {
+  string id = 1;            // "free" | "growth" | "pro" | "enterprise" | custom
+  string name = 2;
+  // quotas: keyed limit, e.g. "outlets"=3, "staff.waiter"=10, "tables"=40,
+  // "connectors"=2. -1 means unlimited.
+  map<string, int64> quotas = 3;
+  // feature flags: "aggregators", "analytics_pro", "crm", "multi_brand", ...
+  map<string, bool> features = 4;
+}
+
+message Entitlement {           // an owner's effective plan + any overrides
+  string owner_id = 1;
+  string plan_id = 2;
+  map<string, int64> quota_overrides = 3; // per-owner tweaks (sales-negotiated)
+  map<string, bool> feature_overrides = 4;
+}
+
+message GetEntitlementRequest { string owner_id = 1; }
+message GetEntitlementResponse { Entitlement entitlement = 1; Plan effective_plan = 2; }
+
+// Usage check: may I create N more of `key`? Returns allowed + remaining + the limit.
+message CheckQuotaRequest { string owner_id = 1; string key = 2; int64 delta = 3; }
+message CheckQuotaResponse { bool allowed = 1; int64 remaining = 2; int64 limit = 3; string upgrade_hint = 4; }
+
+// Atomically reserve quota (idempotent by reservation_id) — used inside a create.
+message ReserveQuotaRequest { string owner_id = 1; string key = 2; int64 delta = 3; string reservation_id = 4; }
+message ReserveQuotaResponse { bool ok = 1; int64 remaining = 2; }
+message ReleaseQuotaRequest { string owner_id = 1; string key = 2; int64 delta = 3; string reservation_id = 4; }
+message ReleaseQuotaResponse { bool ok = 1; }
+
+message HasFeatureRequest { string owner_id = 1; string feature = 2; }
+message HasFeatureResponse { bool enabled = 1; }
+
+// Plan administration (platform admin / billing-saas driven).
+message SetEntitlementRequest { Entitlement entitlement = 1; }
+message SetEntitlementResponse { Entitlement entitlement = 1; }
+message UpsertPlanRequest { Plan plan = 1; }
+message UpsertPlanResponse { Plan plan = 1; }
+message ListPlansRequest {}
+message ListPlansResponse { repeated Plan plans = 1; }
+
+service EntitlementsService {
+  rpc GetEntitlement(GetEntitlementRequest) returns (GetEntitlementResponse);
+  rpc CheckQuota(CheckQuotaRequest) returns (CheckQuotaResponse);
+  rpc ReserveQuota(ReserveQuotaRequest) returns (ReserveQuotaResponse);
+  rpc ReleaseQuota(ReleaseQuotaRequest) returns (ReleaseQuotaResponse);
+  rpc HasFeature(HasFeatureRequest) returns (HasFeatureResponse);
+  rpc SetEntitlement(SetEntitlementRequest) returns (SetEntitlementResponse);
+  rpc UpsertPlan(UpsertPlanRequest) returns (UpsertPlanResponse);
+  rpc ListPlans(ListPlansRequest) returns (ListPlansResponse); // platform admin
+}

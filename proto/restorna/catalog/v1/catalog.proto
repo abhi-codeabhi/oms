@@ -1,0 +1,62 @@
+syntax = "proto3";
+package restorna.catalog.v1;
+
+import "restorna/common/v1/common.proto";
+
+// CatalogService owns the menu: categories + items (+ modifiers), with brand-level
+// menus and per-outlet overrides (price/availability). 86-ing toggles availability.
+// Scope (brand_id / restaurant_id) comes from the auth context.
+
+message Category { string id = 1; string name = 2; int32 sort = 3; }
+
+message Item {
+  string id = 1;            // item_...
+  string category_id = 2;
+  string name = 3;
+  string description = 4;
+  restorna.common.v1.Money price = 5;
+  bool veg = 6;
+  map<string, int32> tags = 7;     // dietary flags: dairy/nuts/gluten/...
+  int32 prep_minutes = 8;
+  bool available = 9;              // effective availability (after outlet override)
+  restorna.common.v1.Asset image = 10;
+  string station = 11;            // grill|tandoor|cold (kitchen routing hint)
+}
+
+message UpsertCategoryRequest { Category category = 1; }
+message UpsertCategoryResponse { Category category = 1; }
+message ListCategoriesRequest {}
+message ListCategoriesResponse { repeated Category categories = 1; }
+
+message UpsertItemRequest { Item item = 1; }
+message UpsertItemResponse { Item item = 1; }
+message GetItemRequest { string item_id = 1; }
+message GetItemResponse { Item item = 1; }
+
+// Customer menu (available only) with optional dietary-pref evaluation.
+message GetMenuRequest { repeated string prefs = 1; bool only_available = 2; }
+message GetMenuResponse { repeated Item items = 1; }
+
+// Manager view: all items incl. unavailable.
+message ListAllItemsRequest {}
+message ListAllItemsResponse { repeated Item items = 1; }
+
+// 86 / un-86 an item at the outlet.
+message SetAvailabilityRequest { string item_id = 1; bool available = 2; }
+message SetAvailabilityResponse { Item item = 1; }
+
+// Per-outlet price/availability override of a brand item.
+message SetOutletOverrideRequest { string item_id = 1; restorna.common.v1.Money price = 2; bool available = 3; bool clear = 4; }
+message SetOutletOverrideResponse { Item item = 1; }
+
+service CatalogService {
+  rpc UpsertCategory(UpsertCategoryRequest) returns (UpsertCategoryResponse);
+  rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
+  rpc UpsertItem(UpsertItemRequest) returns (UpsertItemResponse);
+  rpc GetItem(GetItemRequest) returns (GetItemResponse);
+  rpc GetMenu(GetMenuRequest) returns (GetMenuResponse);
+  rpc ListAllItems(ListAllItemsRequest) returns (ListAllItemsResponse);
+  rpc SetAvailability(SetAvailabilityRequest) returns (SetAvailabilityResponse);
+  rpc SetOutletOverride(SetOutletOverrideRequest) returns (SetOutletOverrideResponse);
+}
+// Emits: restorna.catalog.item.86d.v1, restorna.catalog.menu.published.v1

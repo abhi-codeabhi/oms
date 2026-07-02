@@ -1,0 +1,48 @@
+syntax = "proto3";
+package restorna.kitchen.v1;
+
+// KitchenService is the KDS. It CONSUMES ordering.order.placed events to create a
+// ticket (resolving item names/stations from catalog), and exposes the cook board.
+// Per-ticket lifecycle: cooking -> ready -> served. Ready tickets leave the cook
+// board and enter the waiter serve queue; serving marks one ticket served.
+
+message TicketItem { string id = 1; string name = 2; string station = 3; int32 state = 4; } // 0 new,1 prep,2 ready
+message Ticket {
+  string id = 1;            // tkt_...
+  string order_id = 2;
+  string table = 3;
+  repeated TicketItem items = 4;
+  bool served = 5;
+  string created_at = 6;
+}
+
+// Manual receive (e.g. aggregator order); normally created from the event.
+message ReceiveTicketRequest { string order_id = 1; string table = 2;
+  message I { string name = 1; string station = 2; } repeated I items = 3; }
+message ReceiveTicketResponse { Ticket ticket = 1; }
+
+message AdvanceItemRequest { string ticket_id = 1; int32 item_index = 2; }
+message AdvanceItemResponse { Ticket ticket = 1; }
+message BumpRequest { string ticket_id = 1; }                 // mark whole ticket ready
+message BumpResponse { Ticket ticket = 1; }
+message ServeRequest { string ticket_id = 1; }                // waiter delivered it
+message ServeResponse { Ticket ticket = 1; }
+
+message GetBoardRequest {}                                    // cooking tickets (cook screen)
+message GetBoardResponse { repeated Ticket tickets = 1; }
+message ServeQueueRequest {}                                  // ready, unserved (waiter)
+message ServeQueueResponse { repeated Ticket tickets = 1; }
+message AllDayRequest {}
+message AllDayResponse { map<string, int32> counts = 1; }
+
+service KitchenService {
+  rpc ReceiveTicket(ReceiveTicketRequest) returns (ReceiveTicketResponse);
+  rpc AdvanceItem(AdvanceItemRequest) returns (AdvanceItemResponse);
+  rpc Bump(BumpRequest) returns (BumpResponse);
+  rpc Serve(ServeRequest) returns (ServeResponse);
+  rpc GetBoard(GetBoardRequest) returns (GetBoardResponse);
+  rpc ServeQueue(ServeQueueRequest) returns (ServeQueueResponse);
+  rpc AllDay(AllDayRequest) returns (AllDayResponse);
+}
+// Consumes: restorna.ordering.order.placed.v1
+// Emits: restorna.kitchen.ticket.ready.v1, restorna.kitchen.ticket.served.v1

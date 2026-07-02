@@ -1,0 +1,102 @@
+apiVersion: v2
+name: restorna-platform
+description: >-
+  Umbrella chart for the Restorna Platform control plane. Depends on every
+  service chart plus optional in-cluster infra (Postgres, NATS, Redis) via
+  community subcharts. Cloud-agnostic: no provider primitives in this base.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+dependencies:
+  # --- service charts (local) ---
+  - name: gateway
+    version: "0.1.0"
+    repository: "file://../gateway"
+    condition: gateway.enabled
+  - name: identity
+    version: "0.1.0"
+    repository: "file://../identity"
+    condition: identity.enabled
+  - name: tenant
+    version: "0.1.0"
+    repository: "file://../tenant"
+    condition: tenant.enabled
+  - name: entitlements
+    version: "0.1.0"
+    repository: "file://../entitlements"
+    condition: entitlements.enabled
+  - name: staff
+    version: "0.1.0"
+    repository: "file://../staff"
+    condition: staff.enabled
+  - name: settings
+    version: "0.1.0"
+    repository: "file://../settings"
+    condition: settings.enabled
+  - name: onboarding
+    version: "0.1.0"
+    repository: "file://../onboarding"
+    condition: onboarding.enabled
+
+  # --- M2 OMS data-plane service charts (local) ---
+  - name: catalog
+    version: "0.1.0"
+    repository: "file://../catalog"
+    condition: catalog.enabled
+  - name: ordering
+    version: "0.1.0"
+    repository: "file://../ordering"
+    condition: ordering.enabled
+  - name: promotions
+    version: "0.1.0"
+    repository: "file://../promotions"
+    condition: promotions.enabled
+  - name: kitchen
+    version: "0.1.0"
+    repository: "file://../kitchen"
+    condition: kitchen.enabled
+  - name: billing
+    version: "0.1.0"
+    repository: "file://../billing"
+    condition: billing.enabled
+  - name: floor
+    version: "0.1.0"
+    repository: "file://../floor"
+    condition: floor.enabled
+  - name: servicerequests
+    version: "0.1.0"
+    repository: "file://../servicerequests"
+    condition: servicerequests.enabled
+
+  # --- M3 integration-plane service charts (local) ---
+  - name: connectorhub
+    version: "0.1.0"
+    repository: "file://../connectorhub"
+    condition: connectorhub.enabled
+  - name: payments
+    version: "0.1.0"
+    repository: "file://../payments"
+    condition: payments.enabled
+  - name: notifications
+    version: "0.1.0"
+    repository: "file://../notifications"
+    condition: notifications.enabled
+  - name: aggregators
+    version: "0.1.0"
+    repository: "file://../aggregators"
+    condition: aggregators.enabled
+
+  # --- infra subcharts (optional; disable to use managed equivalents) ---
+  - name: postgresql
+    version: "15.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+  - name: nats
+    version: "1.x.x"
+    repository: "https://nats-io.github.io/k8s/helm/charts/"
+    condition: nats.enabled
+  - name: redis
+    version: "19.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled

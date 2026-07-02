@@ -1,0 +1,49 @@
+syntax = "proto3";
+package restorna.floor.v1;
+
+// FloorService manages tables, seating, waiter assignment, move/swap, and the
+// proactive nudge timers. Live per-table status (cooking/ready/billing) is DERIVED
+// at read time from the table's kitchen tickets + open bills (a table runs many
+// orders at once), so a single stored status can never be wrong.
+
+message Table {
+  int32 n = 1;
+  string status = 2;        // free|seated|cooking|ready|billing  (derived in GetFloor)
+  string order = 3;
+  string waiter_id = 4;
+  int64 seated_at = 5;      // epoch ms (nudge timers)
+  int64 greeted_at = 6;
+  int64 last_served_at = 7;
+  int64 last_checkin_at = 8;
+}
+message Floor { repeated Table tables = 1; }
+
+message InitFloorRequest { repeated int32 tables = 1; }
+message InitFloorResponse { Floor floor = 1; }
+message GetFloorRequest {}                                  // derived view
+message GetFloorResponse { Floor floor = 1; }
+message SeatPartyRequest { int32 n = 1; }                   // arms greet nudge
+message SeatPartyResponse { Floor floor = 1; }
+message AssignWaiterRequest { repeated int32 n = 1; string waiter_id = 2; } // multi-table
+message AssignWaiterResponse { Floor floor = 1; }
+message MoveRequest { int32 src = 1; int32 dst = 2; }       // move/swap (relocates orders+tickets too)
+message MoveResponse { Floor floor = 1; string verb = 2; }
+
+// Nudges (greet / how-was-the-food / anything-else), derived from timers + the
+// nudge config which lives in the settings service (floor.nudge.*).
+message Nudge { int32 table = 1; string type = 2; string label = 3; int64 since = 4; }
+message GetNudgesRequest {}
+message GetNudgesResponse { repeated Nudge nudges = 1; }
+message AckNudgeRequest { int32 n = 1; string type = 2; }
+message AckNudgeResponse {}
+
+service FloorService {
+  rpc InitFloor(InitFloorRequest) returns (InitFloorResponse);
+  rpc GetFloor(GetFloorRequest) returns (GetFloorResponse);
+  rpc SeatParty(SeatPartyRequest) returns (SeatPartyResponse);
+  rpc AssignWaiter(AssignWaiterRequest) returns (AssignWaiterResponse);
+  rpc Move(MoveRequest) returns (MoveResponse);
+  rpc GetNudges(GetNudgesRequest) returns (GetNudgesResponse);
+  rpc AckNudge(AckNudgeRequest) returns (AckNudgeResponse);
+}
+// Consumes: ordering.order.placed (seat+seatedAt), kitchen.ticket.served (lastServedAt)

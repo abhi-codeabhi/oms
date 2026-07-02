@@ -1,0 +1,45 @@
+syntax = "proto3";
+package restorna.notifications.v1;
+
+// NotificationsService sends SMS/WhatsApp/email/push over any provider (Twilio/
+// MSG91/FCM/SES) via connector-hub. One API; templated; async with delivery status.
+// identity (OTP), staff (invites), onboarding, billing (receipts) call this.
+
+enum Channel { CHANNEL_UNSPECIFIED = 0; SMS = 1; WHATSAPP = 2; EMAIL = 3; PUSH = 4; }
+enum DeliveryStatus { DELIVERY_UNSPECIFIED = 0; QUEUED = 1; SENT = 2; DELIVERED = 3; FAILED = 4; }
+
+message Message {
+  string id = 1;            // msg_...
+  Channel channel = 2;
+  string to = 3;
+  string template = 4;      // template id (rendered with vars)
+  map<string, string> vars = 5;
+  DeliveryStatus status = 6;
+  string created_at = 7;
+}
+
+message SendRequest {
+  Channel channel = 1;
+  string to = 2;
+  string template = 3;
+  map<string, string> vars = 4;
+  string idempotency_key = 5;
+}
+message SendResponse { Message message = 1; }
+
+message GetStatusRequest { string message_id = 1; }
+message GetStatusResponse { Message message = 1; }
+
+// Template CRUD (owner/brand-configurable copy).
+message UpsertTemplateRequest { string id = 1; Channel channel = 2; string subject = 3; string body = 4; }
+message UpsertTemplateResponse { string id = 1; }
+message ListTemplatesRequest {}
+message ListTemplatesResponse { repeated UpsertTemplateRequest templates = 1; }
+
+service NotificationsService {
+  rpc Send(SendRequest) returns (SendResponse);
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  rpc UpsertTemplate(UpsertTemplateRequest) returns (UpsertTemplateResponse);
+  rpc ListTemplates(ListTemplatesRequest) returns (ListTemplatesResponse);
+}
+// Consumes provider webhooks (via connector-hub) -> updates delivery status.

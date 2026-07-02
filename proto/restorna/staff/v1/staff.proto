@@ -1,0 +1,53 @@
+syntax = "proto3";
+package restorna.staff.v1;
+
+import "restorna/common/v1/common.proto";
+
+// StaffService owns the roster + role bindings per outlet/brand and ENFORCES limits
+// by reserving quota in entitlements before adding a member. Table assignment lives
+// in floor (OMS); this owns people.
+
+message StaffMember {
+  string id = 1;            // stf_...
+  string owner_id = 2;
+  string brand_id = 3;
+  string restaurant_id = 4;          // scope the member operates in
+  string name = 5;
+  string email = 6;
+  string phone = 7;
+  restorna.common.v1.Role role = 8;
+  bool active = 9;
+  string user_id = 10;               // linked identity user (after they accept)
+}
+
+message AddStaffRequest {
+  string restaurant_id = 1;
+  string name = 2;
+  string email = 3;
+  string phone = 4;
+  restorna.common.v1.Role role = 5;
+}
+// May fail with ResourceExhausted if the plan's staff.<role> quota is reached.
+message AddStaffResponse { StaffMember member = 1; }
+
+message ListStaffRequest { string restaurant_id = 1; restorna.common.v1.PageRequest page = 2; }
+message ListStaffResponse { repeated StaffMember members = 1; restorna.common.v1.PageResponse page = 2; }
+
+message SetStaffActiveRequest { string staff_id = 1; bool active = 2; }   // releases quota when deactivated
+message SetStaffActiveResponse { StaffMember member = 1; }
+
+message ChangeRoleRequest { string staff_id = 1; restorna.common.v1.Role role = 2; }
+message ChangeRoleResponse { StaffMember member = 1; }
+
+// Invite flow: create member -> send invite (notifications) -> they OTP-in -> linked.
+message InviteStaffRequest { string staff_id = 1; }
+message InviteStaffResponse { string invite_id = 1; }
+
+service StaffService {
+  rpc AddStaff(AddStaffRequest) returns (AddStaffResponse);
+  rpc ListStaff(ListStaffRequest) returns (ListStaffResponse);
+  rpc SetStaffActive(SetStaffActiveRequest) returns (SetStaffActiveResponse);
+  rpc ChangeRole(ChangeRoleRequest) returns (ChangeRoleResponse);
+  rpc InviteStaff(InviteStaffRequest) returns (InviteStaffResponse);
+}
+// Emits: restorna.staff.member.added.v1, restorna.staff.member.deactivated.v1

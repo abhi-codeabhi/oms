@@ -1,0 +1,57 @@
+syntax = "proto3";
+package restorna.ordering.v1;
+
+import "restorna/common/v1/common.proto";
+
+// OrderingService records dine-in orders (multi-round) per table. No payment here —
+// the bill is settled later by billing. On PlaceOrder it emits OrderPlaced, which
+// kitchen (ticket) and floor (seat) consume via events (choreography).
+
+message Line {
+  string id = 1;
+  string menu_item_id = 2;
+  string name = 3;                       // resolved dish name
+  int32 qty = 4;
+  restorna.common.v1.Money unit_price = 5;
+  string station = 6;
+}
+
+message Order {
+  string id = 1;            // ord_...
+  string restaurant_id = 2;
+  string table_id = 3;      // "T7"
+  repeated Line lines = 4;
+  restorna.common.v1.Money subtotal = 5;
+  bool billed = 6;
+  string created_at = 7;
+}
+
+message PlaceOrderRequest {
+  string table_id = 1;
+  message NewLine { string menu_item_id = 1; int32 qty = 2; restorna.common.v1.Money unit_price = 3; string name = 4; }
+  repeated NewLine items = 2;
+}
+message PlaceOrderResponse { Order order = 1; }
+
+message GetOrderRequest { string order_id = 1; }
+message GetOrderResponse { Order order = 1; }
+
+// Tolerant table matching ("T7"/"7"/7). Unbilled by default.
+message ListForTableRequest { string table = 1; bool include_billed = 2; }
+message ListForTableResponse { repeated Order orders = 1; }
+
+message MarkBilledRequest { repeated string order_ids = 1; }
+message MarkBilledResponse { int32 count = 1; }
+
+// Move all open orders from one table label to another (waiter move/swap).
+message RelocateRequest { string from_table = 1; string to_table = 2; }
+message RelocateResponse { int32 moved = 1; }
+
+service OrderingService {
+  rpc PlaceOrder(PlaceOrderRequest) returns (PlaceOrderResponse);
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+  rpc ListForTable(ListForTableRequest) returns (ListForTableResponse);
+  rpc MarkBilled(MarkBilledRequest) returns (MarkBilledResponse);
+  rpc Relocate(RelocateRequest) returns (RelocateResponse);
+}
+// Emits: restorna.ordering.order.placed.v1 { order_id, restaurant_id, table_id, lines[] }

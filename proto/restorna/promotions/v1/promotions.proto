@@ -1,0 +1,39 @@
+syntax = "proto3";
+package restorna.promotions.v1;
+
+import "restorna/common/v1/common.proto";
+
+// PromotionsService: coupons, happy hour, scheduled discounts. Billing/customer
+// call Evaluate to get the best discount for a cart context.
+
+message Coupon {
+  string code = 1;
+  string type = 2;          // percent|flat
+  int64 value = 3;          // percent (0-100) or flat minor units
+  restorna.common.v1.Money min_order = 4;
+  string category = 5;      // optional category restriction
+  bool active = 6;
+  string starts_at = 7;
+  string ends_at = 8;
+}
+
+message UpsertCouponRequest { Coupon coupon = 1; }
+message UpsertCouponResponse { Coupon coupon = 1; }
+message ListCouponsRequest {}
+message ListCouponsResponse { repeated Coupon coupons = 1; }
+message ToggleCouponRequest { string code = 1; bool active = 2; }
+message ToggleCouponResponse { Coupon coupon = 1; }
+
+message EvaluateRequest {
+  restorna.common.v1.Money subtotal = 1;
+  string coupon_code = 2;
+  string category = 3;
+}
+message EvaluateResponse { restorna.common.v1.Money discount = 1; string applied = 2; }
+
+service PromotionsService {
+  rpc UpsertCoupon(UpsertCouponRequest) returns (UpsertCouponResponse);
+  rpc ListCoupons(ListCouponsRequest) returns (ListCouponsResponse);
+  rpc ToggleCoupon(ToggleCouponRequest) returns (ToggleCouponResponse);
+  rpc Evaluate(EvaluateRequest) returns (EvaluateResponse);
+}

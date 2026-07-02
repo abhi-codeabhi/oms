@@ -1,0 +1,25 @@
+# Deploy the console as a static site — this manifest works on Render, and the same
+# three knobs (build command, publish dir, SPA rewrite) map onto Netlify, Vercel,
+# Cloudflare Pages, or an S3+CDN bucket. See README "Deploy anywhere".
+#
+# Set VITE_GATEWAY_URL to your gateway's public URL and make sure the gateway's
+# CORS_ALLOWED_ORIGINS includes this site's origin.
+services:
+  - type: web
+    name: restorna-console
+    runtime: static
+    rootDir: web/console
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_GATEWAY_URL
+        sync: false # set in dashboard, e.g. https://gateway.restorna.app
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      # SPA fallback so React Router deep links resolve.
+      - type: rewrite
+        source: /*
+        destination: /index.html

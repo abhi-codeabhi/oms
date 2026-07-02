@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tenant-config
+data:
+  APP_ENV: "production"
+  OTEL_EXPORTER_OTLP_ENDPOINT: ""
+  IDENTITY_URL: "http://identity:8080"
+  TENANT_URL: "http://tenant:8080"
+  ENTITLEMENTS_URL: "http://entitlements:8080"
+  STAFF_URL: "http://staff:8080"
+  SETTINGS_URL: "http://settings:8080"
+  ONBOARDING_URL: "http://onboarding:8080"

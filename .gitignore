@@ -1,0 +1,42 @@
+# --- build output -----------------------------------------------------------
+bin/
+/out/
+dist/
+*.exe
+*.test
+
+# --- node (web console) -----------------------------------------------------
+node_modules/
+web/console/node_modules/
+*.tsbuildinfo
+
+# --- coverage / profiling ---------------------------------------------------
+*.out
+*.cover
+coverage.*
+*.prof
+
+# --- local config / secrets (12-factor: never commit real env) --------------
+.env
+.env.*
+!.env.example
+*.local
+secrets/
+*.pem
+*.key
+
+# NOTE: generated proto IS checked in — do NOT ignore gen/go/**/*.pb.go or
+# the *connect*.go files. Only ignore local scratch under gen/.
+gen/**/tmp/
+gen/**/*.local.go
+
+# --- Go workspace sum (regenerated) ----------------------------------------
+go.work.sum
+
+# --- editor / OS junk -------------------------------------------------------
+.DS_Store
+.idea/
+.vscode/
+*.swp
+tmp/
+.tmp/

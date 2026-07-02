@@ -1,0 +1,10 @@
+version: v1
+name: buf.build/restorna/platform
+lint:
+  use:
+    - DEFAULT
+  except:
+    - PACKAGE_VERSION_SUFFIX  # we version dirs as v1; allow flexibility
+breaking:
+  use:
+    - FILE

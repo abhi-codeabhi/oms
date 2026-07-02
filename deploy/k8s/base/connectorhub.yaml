@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connectorhub
+  labels:
+    app.kubernetes.io/name: connectorhub
+    app.kubernetes.io/part-of: restorna-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: connectorhub
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: connectorhub
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: connectorhub
+          image: ghcr.io/restorna/connectorhub:latest
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+          envFrom:
+            - configMapRef:
+                name: connectorhub-config
+            # Carries DATABASE_URL, NATS_URL, JWT_PUBLIC_KEY and the connector
+            # Key-Encryption-Key CONNECTOR_KEK (32 bytes; base64/hex/raw). The
+            # service refuses to start without CONNECTOR_KEK.
+            - secretRef:
+                name: connectorhub-secrets
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: connectorhub
+  labels:
+    app.kubernetes.io/name: connectorhub
+    app.kubernetes.io/part-of: restorna-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: connectorhub
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: connectorhub
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: connectorhub
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

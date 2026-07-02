@@ -1,0 +1,32 @@
+syntax = "proto3";
+package restorna.servicerequests.v1;
+
+// ServiceRequestsService: the diner's "call waiter / water / bill / cutlery"
+// requests, with escalation when overdue and a per-table+type cooldown (rate limit).
+// Cooldown + escalation thresholds come from settings (floor.call.cooldown_secs, etc).
+
+message Request {
+  string id = 1;            // req_...
+  string type = 2;          // call|water|bill|cutlery
+  int32 table = 3;
+  string state = 4;         // assigned|escalated|done
+  string assigned_to = 5;
+  int64 created_at = 6;     // epoch ms
+}
+
+message RaiseRequest { string type = 1; int32 table = 2; string assigned_to = 3; }
+message RaiseResponse { Request request = 1; }    // FailedPrecondition if in cooldown
+message ListOpenRequest {}
+message ListOpenResponse { repeated Request requests = 1; }
+message AcknowledgeRequest { string request_id = 1; }
+message AcknowledgeResponse { Request request = 1; }   // sets cooldown for table+type
+message EscalateDueRequest { int64 now = 1; }
+message EscalateDueResponse { repeated Request escalated = 1; }
+
+service ServiceRequestsService {
+  rpc Raise(RaiseRequest) returns (RaiseResponse);
+  rpc ListOpen(ListOpenRequest) returns (ListOpenResponse);
+  rpc Acknowledge(AcknowledgeRequest) returns (AcknowledgeResponse);
+  rpc EscalateDue(EscalateDueRequest) returns (EscalateDueResponse);
+}
+// Emits: restorna.servicerequests.raised.v1, .escalated.v1

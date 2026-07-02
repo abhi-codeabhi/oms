@@ -1,0 +1,70 @@
+# Default values for the floor service. Override per-environment with -f or --set.
+# The image is the single artifact built from services/floor/Dockerfile (context = repo root).
+replicaCount: 2
+
+image:
+  repository: ghcr.io/restorna/floor
+  pullPolicy: IfNotPresent
+  tag: ""            # defaults to .Chart.AppVersion when empty
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# containerPort: the process binds $PORT (12-factor). Keep 8080 in-cluster; the
+# Service maps a stable cluster port to it. Inter-service URLs use the Service DNS.
+service:
+  type: ClusterIP
+  port: 8080
+containerPort: 8080
+
+# Non-cloud-specific env. Cloud overlays add provider annotations elsewhere.
+env:
+  APP_ENV: "production"
+  OTEL_EXPORTER_OTLP_ENDPOINT: ""
+
+# Secret refs — created out-of-band (sealed-secrets / external-secrets / kubectl).
+# Keys expected in the referenced Secret: DATABASE_URL, NATS_URL, JWT_PUBLIC_KEY
+secret:
+  name: "floor-secrets"
+  create: false      # set true + provide .Values.secret.data to render a Secret
+
+# ConfigMap-level inter-service URLs (cluster-DNS names). Empty for leaf services.
+serviceURLs:
+  KITCHEN_URL: "http://kitchen:8080"
+  BILLING_URL: "http://billing:8080"
+  SETTINGS_URL: "http://settings:8080"
+  ORDERING_URL: "http://ordering:8080"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+# Probes hit the grpcx health endpoints (/healthz liveness, /readyz readiness).
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: http
+  initialDelaySeconds: 3
+  periodSeconds: 5
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

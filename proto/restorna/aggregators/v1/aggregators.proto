@@ -1,0 +1,35 @@
+syntax = "proto3";
+package restorna.aggregators.v1;
+
+import "restorna/common/v1/common.proto";
+
+// AggregatorsService syncs menu OUT to and pulls orders IN from delivery
+// aggregators (Zomato/Swiggy) via connector-hub adapters. Ingested external orders
+// are normalized and forwarded to ordering (so they hit the kitchen like any order).
+
+message ExternalOrder {
+  string id = 1;            // ext_...
+  string connector_id = 2;      // zomato|swiggy
+  string external_ref = 3;      // aggregator's order id
+  string status = 4;            // received|accepted|preparing|ready|dispatched|cancelled
+  message Item { string name = 1; int32 qty = 2; restorna.common.v1.Money price = 3; }
+  repeated Item items = 5;
+  string placed_at = 6;
+}
+
+message PushMenuRequest { string connector_id = 1; }         // publish current catalog to the aggregator
+message PushMenuResponse { bool ok = 1; int32 items = 2; }
+
+message ListExternalOrdersRequest { string connector_id = 1; string status = 2; }
+message ListExternalOrdersResponse { repeated ExternalOrder orders = 1; }
+
+message AckExternalOrderRequest { string external_order_id = 1; string status = 2; } // accept/reject/update
+message AckExternalOrderResponse { ExternalOrder order = 1; }
+
+service AggregatorsService {
+  rpc PushMenu(PushMenuRequest) returns (PushMenuResponse);
+  rpc ListExternalOrders(ListExternalOrdersRequest) returns (ListExternalOrdersResponse);
+  rpc AckExternalOrder(AckExternalOrderRequest) returns (AckExternalOrderResponse);
+}
+// Consumes aggregator webhooks (via connector-hub) -> creates ExternalOrder +
+// forwards to ordering.PlaceOrder. Emits restorna.aggregators.order.received.v1

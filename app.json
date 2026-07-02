@@ -1,0 +1,42 @@
+{
+  "name": "Restorna Platform",
+  "description": "Multi-tenant restaurant-OS SaaS control plane — Go microservices, cloud-agnostic. Each service is a 12-factor container that binds $PORT.",
+  "repository": "https://github.com/restorna/platform",
+  "keywords": ["go", "microservices", "saas", "restaurant", "connectrpc", "monorepo"],
+  "stack": "container",
+  "env": {
+    "APP_ENV": {
+      "description": "Runtime environment (dev|staging|production). dev enables the dev OTP code.",
+      "value": "production"
+    },
+    "DATABASE_URL": {
+      "description": "Postgres DSN shared by the control-plane services (or per-service if split).",
+      "required": true
+    },
+    "NATS_URL": {
+      "description": "NATS (JetStream) URL for the event bus, e.g. nats://nats:4222.",
+      "required": true
+    },
+    "JWT_PUBLIC_KEY": {
+      "description": "Ed25519 public key (base64 std) — shared verify key for every service's auth interceptor.",
+      "required": true
+    },
+    "JWT_PRIVATE_KEY": {
+      "description": "Ed25519 private key (base64 std) — ONLY the identity service needs this to sign tokens.",
+      "required": false
+    },
+    "OTEL_EXPORTER_OTLP_ENDPOINT": {
+      "description": "Optional OTLP collector endpoint for traces.",
+      "required": false
+    }
+  },
+  "addons": [
+    { "plan": "heroku-postgresql" }
+  ],
+  "formation": {
+    "identity": { "quantity": 1, "size": "standard-1x" },
+    "tenant": { "quantity": 1, "size": "standard-1x" },
+    "entitlements": { "quantity": 1, "size": "standard-1x" },
+    "staff": { "quantity": 1, "size": "standard-1x" }
+  }
+}

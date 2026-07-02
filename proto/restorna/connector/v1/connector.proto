@@ -1,0 +1,69 @@
+syntax = "proto3";
+package restorna.connector.v1;
+
+// ConnectorHubService is the plug-and-play integration registry. Connectors
+// (payment/aggregator/crm/erp/notification) declare a Manifest; owners INSTALL and
+// configure them per tenant (credentials encrypted), gated by entitlements
+// (features.<capability> / connectors quota). The hub routes inbound webhooks to
+// the right connector and exposes capability lookups to payments/aggregators/etc.
+
+enum Capability {
+  CAPABILITY_UNSPECIFIED = 0;
+  CAPABILITY_PAYMENT = 1;
+  CAPABILITY_AGGREGATOR = 2;
+  CAPABILITY_CRM = 3;
+  CAPABILITY_ERP = 4;
+  CAPABILITY_NOTIFICATION = 5;
+}
+
+message Manifest {
+  string id = 1;            // "razorpay" | "paytm" | "phonepe" | "zomato" | "swiggy" | ...
+  string name = 2;
+  repeated Capability capabilities = 3;
+  string config_schema = 4; // JSON schema of required config fields (keys, secret flags)
+  string logo_url = 5;
+}
+
+message Installation {          // a connector configured for a tenant scope
+  string id = 1;            // inst_...
+  string connector_id = 2;
+  bool enabled = 3;
+  bool test_mode = 4;
+  map<string, string> config = 5; // non-secret config echoed back; secrets are write-only
+  string installed_at = 6;
+}
+
+message ListAvailableRequest {}                              // marketplace (entitlement-filtered)
+message ListAvailableResponse { repeated Manifest connectors = 1; }
+
+message InstallRequest {
+  string connector_id = 1;
+  bool test_mode = 2;
+  map<string, string> config = 3;   // incl. secrets (stored encrypted)
+}
+message InstallResponse { Installation installation = 1; }
+
+message UpdateInstallationRequest { string installation_id = 1; bool enabled = 2; map<string, string> config = 3; }
+message UpdateInstallationResponse { Installation installation = 1; }
+
+message ListInstallationsRequest { Capability capability = 1; }   // optional filter
+message ListInstallationsResponse { repeated Installation installations = 1; }
+
+// Resolve the active connector for a capability at this tenant (used by payments,
+// aggregators, notifications to pick the right provider + get decrypted config).
+message ResolveRequest { Capability capability = 1; string prefer_connector_id = 2; }
+message ResolveResponse { string connector_id = 1; string installation_id = 2; bool test_mode = 3; map<string, string> config = 4; }
+
+// Inbound webhook (from a provider) — the hub verifies the signature via the
+// connector and returns a normalized CloudEvent that it also publishes.
+message IngestWebhookRequest { string connector_id = 1; bytes body = 2; map<string, string> headers = 3; }
+message IngestWebhookResponse { string event_type = 1; bool accepted = 2; }
+
+service ConnectorHubService {
+  rpc ListAvailable(ListAvailableRequest) returns (ListAvailableResponse);
+  rpc Install(InstallRequest) returns (InstallResponse);          // entitlement-gated
+  rpc UpdateInstallation(UpdateInstallationRequest) returns (UpdateInstallationResponse);
+  rpc ListInstallations(ListInstallationsRequest) returns (ListInstallationsResponse);
+  rpc Resolve(ResolveRequest) returns (ResolveResponse);          // internal
+  rpc IngestWebhook(IngestWebhookRequest) returns (IngestWebhookResponse); // public webhook edge
+}

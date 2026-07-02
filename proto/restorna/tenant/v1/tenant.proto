@@ -1,0 +1,85 @@
+syntax = "proto3";
+package restorna.tenant.v1;
+
+import "restorna/common/v1/common.proto";
+
+// TenantService owns the customer hierarchy: Owner -> Brand -> Restaurant(outlet),
+// plus branding (logo) and tax/locale profile. It is the source of truth for "who
+// exists" in tenant-land; identity authenticates, this models the org.
+
+message Owner {
+  string id = 1;            // own_...
+  string name = 2;
+  string legal_name = 3;
+  string country = 4;       // "IN"
+  string created_at = 5;    // RFC3339
+}
+
+message Brand {
+  string id = 1;            // brnd_...
+  string owner_id = 2;
+  string name = 3;
+  restorna.common.v1.Asset logo = 4;     // branding
+  string primary_color = 5;              // hex, optional
+  string created_at = 6;
+}
+
+message Restaurant {
+  string id = 1;            // out_...
+  string brand_id = 2;
+  string owner_id = 3;
+  string name = 4;
+  string address = 5;
+  string timezone = 6;      // "Asia/Kolkata"
+  string gstin = 7;         // tax id (India)
+  restorna.common.v1.Asset logo = 8;     // outlet override, else brand logo
+  bool active = 9;
+  string created_at = 10;
+}
+
+// ---- Owner ----
+message CreateOwnerRequest { string name = 1; string legal_name = 2; string country = 3; }
+message CreateOwnerResponse { Owner owner = 1; }
+message GetOwnerRequest { string owner_id = 1; }
+message GetOwnerResponse { Owner owner = 1; }
+// Platform-admin index of all owners (cross-tenant; requires ROLE_PLATFORM_ADMIN).
+message ListOwnersRequest { restorna.common.v1.PageRequest page = 1; string query = 2; }
+message ListOwnersResponse { repeated Owner owners = 1; restorna.common.v1.PageResponse page = 2; }
+
+// ---- Brand ----
+message CreateBrandRequest { string owner_id = 1; string name = 2; string primary_color = 3; }
+message CreateBrandResponse { Brand brand = 1; }
+message SetBrandLogoRequest { string brand_id = 1; restorna.common.v1.Asset logo = 2; }
+message SetBrandLogoResponse { Brand brand = 1; }
+message ListBrandsRequest { string owner_id = 1; restorna.common.v1.PageRequest page = 2; }
+message ListBrandsResponse { repeated Brand brands = 1; restorna.common.v1.PageResponse page = 2; }
+
+// ---- Restaurant (outlet) ----
+message CreateRestaurantRequest {
+  string brand_id = 1;
+  string name = 2;
+  string address = 3;
+  string timezone = 4;
+  string gstin = 5;
+}
+message CreateRestaurantResponse { Restaurant restaurant = 1; }
+message ListRestaurantsRequest { string brand_id = 1; restorna.common.v1.PageRequest page = 2; }
+message ListRestaurantsResponse { repeated Restaurant restaurants = 1; restorna.common.v1.PageResponse page = 2; }
+message SetRestaurantActiveRequest { string restaurant_id = 1; bool active = 2; }
+message SetRestaurantActiveResponse { Restaurant restaurant = 1; }
+
+service TenantService {
+  rpc CreateOwner(CreateOwnerRequest) returns (CreateOwnerResponse);
+  rpc GetOwner(GetOwnerRequest) returns (GetOwnerResponse);
+  rpc ListOwners(ListOwnersRequest) returns (ListOwnersResponse); // platform admin
+
+  rpc CreateBrand(CreateBrandRequest) returns (CreateBrandResponse);     // checks entitlements: brands quota
+  rpc SetBrandLogo(SetBrandLogoRequest) returns (SetBrandLogoResponse);
+  rpc ListBrands(ListBrandsRequest) returns (ListBrandsResponse);
+
+  rpc CreateRestaurant(CreateRestaurantRequest) returns (CreateRestaurantResponse); // checks entitlements: outlets quota
+  rpc ListRestaurants(ListRestaurantsRequest) returns (ListRestaurantsResponse);
+  rpc SetRestaurantActive(SetRestaurantActiveRequest) returns (SetRestaurantActiveResponse);
+}
+
+// Emits: restorna.tenant.brand.created.v1, restorna.tenant.outlet.provisioned.v1

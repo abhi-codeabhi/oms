@@ -1,0 +1,56 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# One image per service; overlays pin the tag (newTag) per environment.
+resources:
+  - gateway.yaml
+  - gateway-config.yaml
+  - identity.yaml
+  - identity-config.yaml
+  - tenant.yaml
+  - tenant-config.yaml
+  - entitlements.yaml
+  - entitlements-config.yaml
+  - staff.yaml
+  - staff-config.yaml
+  # settings is now in the base: the M2 OMS services (billing/floor/
+  # servicerequests) read it over cluster DNS (http://settings:8080).
+  - settings.yaml
+  - settings-config.yaml
+  - ingress.yaml
+  # onboarding manifests exist (onboarding.yaml) but are kept out of the base
+  # until its image is published. Uncomment to add:
+  # - onboarding.yaml
+  # - onboarding-config.yaml
+
+  # --- M2 OMS data plane (order→kitchen→floor→billing choreography over NATS) ---
+  - catalog.yaml
+  - catalog-config.yaml
+  - ordering.yaml
+  - ordering-config.yaml
+  - promotions.yaml
+  - promotions-config.yaml
+  - kitchen.yaml
+  - kitchen-config.yaml
+  - billing.yaml
+  - billing-config.yaml
+  - floor.yaml
+  - floor-config.yaml
+  - servicerequests.yaml
+  - servicerequests-config.yaml
+
+  # --- M3 integration plane (connector framework: registry + payments +
+  # notifications + aggregators over external providers via pkg/connectors) ---
+  # connectorhub encrypts secret connector config at rest under CONNECTOR_KEK,
+  # supplied via the connectorhub-secrets Secret (not the ConfigMap).
+  - connectorhub.yaml
+  - connectorhub-config.yaml
+  - payments.yaml
+  - payments-config.yaml
+  - notifications.yaml
+  - notifications-config.yaml
+  - aggregators.yaml
+  - aggregators-config.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: restorna-platform

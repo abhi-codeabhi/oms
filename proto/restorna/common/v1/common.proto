@@ -1,0 +1,46 @@
+syntax = "proto3";
+package restorna.common.v1;
+
+// Shared value types reused across every service contract.
+
+// Money is always integer minor units (e.g. paise) + ISO currency. Never floats.
+message Money {
+  int64 minor = 1;
+  string currency = 2; // "INR"
+}
+
+// The tenancy scope carried in auth context; echoed where useful. Server trusts
+// the JWT-derived scope, NOT request-body ids.
+message TenantRef {
+  string owner_id = 1;
+  string brand_id = 2;       // optional (brand-scoped ops)
+  string restaurant_id = 3;  // optional (outlet-scoped ops)
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_PLATFORM_ADMIN = 1;
+  ROLE_OWNER = 2;
+  ROLE_BRAND_ADMIN = 3;
+  ROLE_MANAGER = 4;
+  ROLE_WAITER = 5;
+  ROLE_KITCHEN = 6;
+  ROLE_CASHIER = 7;
+  ROLE_CUSTOMER = 8;
+}
+
+message PageRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+message PageResponse {
+  string next_page_token = 1;
+  int32 total = 2;
+}
+
+// An uploaded asset reference (logo, dish photo) stored in object storage.
+message Asset {
+  string id = 1;
+  string url = 2;
+  string content_type = 3;
+}

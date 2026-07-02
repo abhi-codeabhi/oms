@@ -1,0 +1,65 @@
+syntax = "proto3";
+package restorna.settings.v1;
+
+import "restorna/common/v1/common.proto";
+
+// SettingsService makes the platform configurable from a BUSINESS angle without
+// code changes. A setting is DEFINED once (key, type, default, scope, who-can-edit)
+// and OVERRIDDEN per owner/brand/restaurant. Services read effective values via
+// GetEffective. Examples:
+//   billing.gst_pct=5, billing.service_charge_pct=0, billing.rounding="nearest_1",
+//   billing.currency="INR", ordering.require_prepay=false, ordering.modes=["dine_in"],
+//   floor.nudge.greet_secs=30, floor.call.cooldown_secs=60, brand.theme.accent="#9E7C46"
+// Everything tunable, with sane defaults and validation.
+
+enum ValueType { VALUE_TYPE_UNSPECIFIED = 0; INT = 1; BOOL = 2; STRING = 3; DECIMAL = 4; JSON = 5; ENUM = 6; }
+enum Scope { SCOPE_UNSPECIFIED = 0; SCOPE_OWNER = 1; SCOPE_BRAND = 2; SCOPE_RESTAURANT = 3; }
+
+message Value { ValueType type = 1; string raw = 2; } // raw is canonical string; parsed per type
+
+message Definition {
+  string key = 1;                 // dotted namespace, e.g. "billing.gst_pct"
+  string title = 2;
+  string description = 3;
+  ValueType type = 4;
+  Value default = 5;
+  Scope max_scope = 6;            // deepest level it may be overridden at
+  repeated string enum_options = 7;
+  string validation = 8;          // e.g. "min:0,max:100"
+  string editable_by = 9;         // "platform_admin" | "owner" | "manager"
+  bool feature_gated = 10;        // hidden unless an entitlement feature is on
+}
+
+message SettingValue {            // an effective resolved value for a scope
+  string key = 1;
+  Value value = 2;
+  Scope source_scope = 3;         // where it was resolved from (override or default)
+}
+
+message RegisterDefinitionsRequest { repeated Definition definitions = 1; } // services self-register their settings
+message RegisterDefinitionsResponse { int32 count = 1; }
+
+message ListDefinitionsRequest { string namespace = 1; }
+message ListDefinitionsResponse { repeated Definition definitions = 1; }
+
+message SetOverrideRequest {
+  restorna.common.v1.TenantRef scope = 1;
+  string key = 2;
+  Value value = 3;
+}
+message SetOverrideResponse { SettingValue value = 1; }
+
+message GetEffectiveRequest {     // resolve keys for a tenant scope (override -> default)
+  restorna.common.v1.TenantRef scope = 1;
+  repeated string keys = 2;       // empty = all in namespace
+  string namespace = 3;
+}
+message GetEffectiveResponse { repeated SettingValue values = 1; }
+
+service SettingsService {
+  rpc RegisterDefinitions(RegisterDefinitionsRequest) returns (RegisterDefinitionsResponse);
+  rpc ListDefinitions(ListDefinitionsRequest) returns (ListDefinitionsResponse);
+  rpc SetOverride(SetOverrideRequest) returns (SetOverrideResponse);   // editable_by enforced
+  rpc GetEffective(GetEffectiveRequest) returns (GetEffectiveResponse); // cached, hot path
+}
+// Emits: restorna.settings.override.changed.v1 (services invalidate caches)

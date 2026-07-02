@@ -1,0 +1,55 @@
+syntax = "proto3";
+package restorna.billing.v1;
+
+import "restorna/common/v1/common.proto";
+
+// BillingService settles a TABLE: it aggregates every unbilled order (via ordering)
+// into ONE categorized final bill, applies tax/discount, and captures payment. Tax
+// rates / service charge / rounding / currency come from the settings service.
+// This is operational billing (the diner pays), distinct from billing-saas.
+
+message BillLine { string id = 1; string name = 2; string category = 3; restorna.common.v1.Money price = 4; }
+message Payment { string id = 1; string method = 2; restorna.common.v1.Money amount = 3; string ref = 4; string at = 5; }
+message Bill {
+  string id = 1;            // bill_...
+  string table = 2;
+  repeated string order_ids = 3;
+  repeated BillLine lines = 4;
+  restorna.common.v1.Money subtotal = 5;
+  restorna.common.v1.Money tax = 6;
+  restorna.common.v1.Money discount = 7;
+  restorna.common.v1.Money total = 8;
+  repeated Payment payments = 9;
+  bool paid = 10;
+  string created_at = 11;
+}
+message Section { string category = 1; int32 count = 2; restorna.common.v1.Money subtotal = 3; }
+
+// The billing board: every occupied table from its first order, running total.
+message Tab { int32 table = 1; int32 order_count = 2; int32 item_count = 3;
+  restorna.common.v1.Money running = 4; bool asked = 5; string bill_id = 6;
+  restorna.common.v1.Money bill_total = 7; string status = 8; } // open|asked|bill_ready
+message OpenTabsRequest {}
+message OpenTabsResponse { repeated Tab tabs = 1; }
+
+message OpenForTableRequest { string table = 1; }        // generate the aggregated bill
+message OpenForTableResponse { Bill bill = 1; repeated Section sections = 2; int32 order_count = 3; }
+message GetBillRequest { string bill_id = 1; }
+message GetBillResponse { Bill bill = 1; repeated Section sections = 2; }
+message ListOpenRequest {}
+message ListOpenResponse { repeated Bill bills = 1; }
+message ApplyDiscountRequest { string bill_id = 1; restorna.common.v1.Money amount = 2; string reason = 3; }
+message ApplyDiscountResponse { Bill bill = 1; }
+message TakePaymentRequest { string bill_id = 1; string method = 2; restorna.common.v1.Money amount = 3; } // method via payments/connector later
+message TakePaymentResponse { Bill bill = 1; bool paid = 2; }
+
+service BillingService {
+  rpc OpenTabs(OpenTabsRequest) returns (OpenTabsResponse);
+  rpc OpenForTable(OpenForTableRequest) returns (OpenForTableResponse);
+  rpc GetBill(GetBillRequest) returns (GetBillResponse);
+  rpc ListOpen(ListOpenRequest) returns (ListOpenResponse);
+  rpc ApplyDiscount(ApplyDiscountRequest) returns (ApplyDiscountResponse);
+  rpc TakePayment(TakePaymentRequest) returns (TakePaymentResponse);
+}
+// Calls ordering (ListForTable, MarkBilled) + catalog (names) + settings (tax/ccy).
+// Emits: restorna.billing.bill.opened.v1, restorna.billing.payment.captured.v1, restorna.billing.bill.finalized.v1

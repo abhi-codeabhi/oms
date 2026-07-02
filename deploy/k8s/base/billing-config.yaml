@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: billing-config
+data:
+  APP_ENV: "production"
+  OTEL_EXPORTER_OTLP_ENDPOINT: ""
+  ORDERING_URL: "http://ordering:8080"
+  CATALOG_URL: "http://catalog:8080"
+  SETTINGS_URL: "http://settings:8080"
+  PROMOTIONS_URL: "http://promotions:8080"

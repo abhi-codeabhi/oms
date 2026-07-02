@@ -1,0 +1,62 @@
+syntax = "proto3";
+package restorna.identity.v1;
+
+import "restorna/common/v1/common.proto";
+
+// IdentityService authenticates principals and issues tokens. Realms: PLATFORM
+// (Restorna staff) and TENANT (owners/staff). Customers get anonymous QR tokens.
+// AuthZ scope (owner/brand/restaurant + role) is embedded in the JWT.
+
+enum Realm { REALM_UNSPECIFIED = 0; REALM_PLATFORM = 1; REALM_TENANT = 2; }
+enum Channel { CHANNEL_UNSPECIFIED = 0; CHANNEL_EMAIL = 1; CHANNEL_PHONE = 2; }
+
+message User {
+  string id = 1;            // usr_...
+  string email = 2;
+  string phone = 3;
+  string display_name = 4;
+  Realm realm = 5;
+  bool active = 6;
+}
+
+message TokenPair { string access_token = 1; string refresh_token = 2; int64 expires_in = 3; }
+
+message StartOtpRequest { Channel channel = 1; string address = 2; Realm realm = 3; }
+message StartOtpResponse { string challenge_id = 1; }
+message VerifyOtpRequest { string challenge_id = 1; string code = 2; }
+message VerifyOtpResponse { TokenPair tokens = 1; User user = 2; }
+
+message RefreshRequest { string refresh_token = 1; }
+message RefreshResponse { TokenPair tokens = 1; }
+
+// Mint a scoped session for a specific tenant context + role (after the owner/staff
+// picks which outlet to operate, or onboarding assigns it).
+message IssueScopedTokenRequest {
+  string user_id = 1;
+  restorna.common.v1.TenantRef scope = 2;
+  restorna.common.v1.Role role = 3;
+}
+message IssueScopedTokenResponse { TokenPair tokens = 1; }
+
+// Anonymous customer session bound to one restaurant + table (from the QR).
+message CustomerSessionRequest { string restaurant_id = 1; string table = 2; }
+message CustomerSessionResponse { TokenPair tokens = 1; }
+
+message IntrospectRequest { string access_token = 1; }
+message IntrospectResponse {
+  bool active = 1;
+  string user_id = 2;
+  restorna.common.v1.Role role = 3;
+  restorna.common.v1.TenantRef scope = 4;
+}
+
+service IdentityService {
+  rpc StartOtp(StartOtpRequest) returns (StartOtpResponse);
+  rpc VerifyOtp(VerifyOtpRequest) returns (VerifyOtpResponse);
+  rpc Refresh(RefreshRequest) returns (RefreshResponse);
+  rpc IssueScopedToken(IssueScopedTokenRequest) returns (IssueScopedTokenResponse);
+  rpc CustomerSession(CustomerSessionRequest) returns (CustomerSessionResponse);
+  rpc Introspect(IntrospectRequest) returns (IntrospectResponse); // used by gateway
+}
+// Pluggable OTP delivery + SSO via the notifications service / OIDC adapter.
+// Emits: restorna.identity.user.registered.v1

@@ -1,0 +1,62 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: restorna-prod
+resources:
+  - ../../base
+
+# Prod pins immutable, digest-or-semver tags. Replace v1.0.0 with the release.
+images:
+  - name: ghcr.io/restorna/gateway
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/identity
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/tenant
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/entitlements
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/staff
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/settings
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/catalog
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/ordering
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/promotions
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/kitchen
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/billing
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/floor
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/servicerequests
+    newTag: v1.0.0
+  # --- M3 integration plane ---
+  - name: ghcr.io/restorna/connectorhub
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/payments
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/notifications
+    newTag: v1.0.0
+  - name: ghcr.io/restorna/aggregators
+    newTag: v1.0.0
+
+replicas:
+  - name: gateway
+    count: 4
+  - name: identity
+    count: 3
+  - name: tenant
+    count: 3
+  - name: entitlements
+    count: 3
+  - name: staff
+    count: 3
+
+patches:
+  - target: { kind: Ingress, name: restorna-gateway }
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.restorna.example

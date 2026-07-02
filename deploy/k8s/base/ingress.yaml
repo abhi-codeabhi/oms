@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: restorna-gateway
+  labels:
+    app.kubernetes.io/part-of: restorna-platform
+spec:
+  rules:
+    - host: api.restorna.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 8080

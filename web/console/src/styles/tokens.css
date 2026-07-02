@@ -1,0 +1,131 @@
+/* Restorna luxe design system — warm ivory + a single muted brass accent.
+   Ported from the demo app (frontend/src/styles/tokens.css) and extended for the
+   control-plane console. Psychology carried in the tokens: restraint (ONE brass
+   accent, exactly one primary action per view — Hick), calm surfaces, clear
+   semantic status colours (Von Restorff for the live/warning states), sub-400ms
+   feedback (Doherty), and a celebratory peak at go-live (peak-end). */
+:root {
+  --bg:#F4F1EA; --surface:#FFFFFF; --s1:#FAF7F1; --ink:#211E18; --muted:#6E665A;
+  --border:#E7E1D5; --border2:#D6CDBD;
+  --g:#9E7C46; --gs:#F2EBDD; --gtx:#7A5E32;
+  --green:#2E7D5B; --rose:#A8536A; --blue:#5E6B8A; --amber:#B0852F; --plum:#8A5A6B; --red:#B23A48;
+  --radius:12px; --shadow:0 8px 30px rgba(33,30,24,.06);
+  --font: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --maxw:1120px;
+}
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased}
+button{font-family:inherit}
+a{color:var(--g);text-decoration:none}
+h1,h2,h3,h4{margin:0;font-weight:640;letter-spacing:-.01em}
+input,select,textarea{font-family:inherit}
+
+.kicker{font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:var(--g)}
+.muted{color:var(--muted)} .xs{font-size:11px} .sm{font-size:12.5px}
+.rz-num{font-variant-numeric:tabular-nums}
+
+/* --- layout --- */
+.rz-shell{min-height:100%;display:flex;flex-direction:column}
+.rz-wrap{width:100%;max-width:var(--maxw);margin:0 auto;padding:0 20px}
+.rz-main{flex:1;padding:28px 0 64px}
+.rz-grid{display:grid;gap:16px}
+@media(min-width:720px){.rz-grid.cols-2{grid-template-columns:1fr 1fr}.rz-grid.cols-3{grid-template-columns:repeat(3,1fr)}}
+.rz-row{display:flex;align-items:center;gap:12px}
+.rz-row.between{justify-content:space-between}
+.rz-stack{display:flex;flex-direction:column;gap:6px}
+.rz-spacer{flex:1}
+
+/* --- cards / primitives (from demo) --- */
+.rz-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius)}
+.rz-card.pad{padding:20px}
+.rz-cta{padding:14px 18px;border:none;border-radius:13px;background:var(--g);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:transform .08s ease, filter .15s ease;min-height:48px}
+.rz-cta.block{width:100%}
+.rz-cta:hover{filter:brightness(1.04)}
+.rz-cta:active{transform:scale(.99)}
+.rz-ghost{padding:12px 16px;border:0.5px solid var(--border2);border-radius:13px;background:var(--surface);color:var(--ink);font-size:13px;cursor:pointer;transition:background .15s ease, border-color .15s ease;min-height:44px}
+.rz-ghost.block{width:100%}
+.rz-ghost:hover{background:var(--s1);border-color:var(--g)}
+.rz-cta:disabled,.rz-ghost:disabled{opacity:.5;cursor:default;transform:none;filter:none}
+.rz-danger{color:var(--red);border-color:#E9CFCF}
+.rz-danger:hover{background:#FBF1F1;border-color:var(--red)}
+
+.rz-tag{font-size:10px;letter-spacing:.5px;text-transform:uppercase;padding:3px 9px;border-radius:20px;background:var(--gs);color:var(--gtx);white-space:nowrap}
+.rz-tag.live{background:#E6EFE8;color:var(--green)}
+.rz-tag.warn{background:#F7EEDA;color:var(--amber)}
+.rz-tag.off{background:#F1EEE8;color:var(--muted)}
+.rz-tag.err{background:#FBEDED;color:var(--red)}
+.rz-pill{font-size:11px;padding:2px 10px;border-radius:20px}
+
+.rz-empty{text-align:center;color:var(--muted);font-size:13px;padding:36px 0;border:0.5px dashed var(--border);border-radius:var(--radius)}
+.rz-empty .ic{font-size:26px;color:var(--g);display:block;margin-bottom:8px}
+
+.rz-chip{font-size:12px;padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .12s ease}
+.rz-chip.on{background:var(--gs);border-color:var(--g);color:var(--gtx);font-weight:600}
+.rz-seg{display:flex;gap:6px}
+.rz-seg button{flex:1;padding:9px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);font-size:13px;cursor:pointer}
+.rz-seg button.on{background:var(--gs);border-color:var(--g);color:var(--gtx);font-weight:600}
+
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid var(--g);outline-offset:2px;border-radius:8px}
+
+/* --- forms --- */
+.rz-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.rz-field label{font-size:12px;font-weight:600;color:var(--ink)}
+.rz-field .hint{font-size:11px;color:var(--muted)}
+.rz-input,.rz-select,.rz-textarea{width:100%;padding:12px 13px;border:1px solid var(--border2);border-radius:10px;background:var(--surface);color:var(--ink);font-size:14px}
+.rz-input:focus,.rz-select:focus,.rz-textarea:focus{border-color:var(--g);outline:none}
+.rz-textarea{min-height:76px;resize:vertical}
+
+/* --- skeletons / motion --- */
+.rz-skel{background:linear-gradient(90deg,var(--s1) 25%,#EFEAE0 37%,var(--s1) 63%);background-size:400% 100%;animation:rz-shimmer 1.3s ease infinite;border-radius:8px}
+@keyframes rz-shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
+@keyframes rz-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.rz-in{animation:rz-in .25s ease}
+@keyframes rz-pop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+
+/* --- toast --- */
+.rz-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-size:12.5px;padding:11px 17px;border-radius:22px;opacity:0;transition:all .25s;z-index:60;pointer-events:none;box-shadow:var(--shadow);max-width:calc(100vw - 40px)}
+.rz-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.rz-toast.err{background:var(--red)}
+.rz-toast.ok{background:var(--green)}
+
+/* --- topbar / nav --- */
+.rz-top{position:sticky;top:0;z-index:40;background:rgba(244,241,234,.86);backdrop-filter:blur(10px);border-bottom:0.5px solid var(--border)}
+.rz-top .rz-wrap{display:flex;align-items:center;gap:20px;height:60px}
+.rz-brand{display:flex;align-items:center;gap:10px;font-weight:680;letter-spacing:-.02em}
+.rz-brand .dot{width:22px;height:22px;border-radius:7px;background:var(--g);display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700}
+.rz-nav{display:flex;gap:4px;overflow:auto}
+.rz-nav a{padding:8px 12px;border-radius:9px;font-size:13px;color:var(--muted);white-space:nowrap}
+.rz-nav a:hover{background:var(--s1);color:var(--ink)}
+.rz-nav a.active{background:var(--gs);color:var(--gtx);font-weight:600}
+
+/* --- stepper (onboarding) --- */
+.rz-steps{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+.rz-step{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.rz-step .n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--border2);font-size:11px;font-weight:700;background:var(--surface)}
+.rz-step.done .n{background:var(--green);border-color:var(--green);color:#fff}
+.rz-step.active .n{background:var(--g);border-color:var(--g);color:#fff}
+.rz-step.active{color:var(--ink);font-weight:600}
+.rz-step .bar{width:20px;height:1.5px;background:var(--border2);border-radius:2px}
+.rz-progress{height:6px;border-radius:6px;background:var(--gs);overflow:hidden;margin-bottom:22px}
+.rz-progress > i{display:block;height:100%;background:var(--g);border-radius:6px;transition:width .4s ease}
+
+/* --- meters (quota usage) --- */
+.rz-meter{height:8px;border-radius:8px;background:var(--gs);overflow:hidden}
+.rz-meter > i{display:block;height:100%;border-radius:8px;background:var(--g);transition:width .4s ease}
+.rz-meter.warn > i{background:var(--amber)}
+.rz-meter.full > i{background:var(--red)}
+
+/* --- table --- */
+.rz-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.rz-table th{text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;padding:10px 12px;border-bottom:0.5px solid var(--border)}
+.rz-table td{padding:12px;border-bottom:0.5px solid var(--border);vertical-align:middle}
+.rz-table tr:last-child td{border-bottom:none}
+.rz-table tr:hover td{background:var(--s1)}
+
+/* --- celebratory go-live (peak-end) --- */
+.rz-celebrate{text-align:center;padding:44px 20px}
+.rz-celebrate .ring{width:88px;height:88px;border-radius:50%;background:#E6EFE8;display:grid;place-items:center;margin:0 auto 18px;animation:rz-pop .5s ease}
+.rz-celebrate .ring span{font-size:40px;color:var(--green)}
+
+@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important}}

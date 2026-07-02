@@ -1,0 +1,29 @@
+go 1.22
+
+// Go workspace ties every module in the monorepo together so the sibling
+// `replace` directives in each go.mod resolve against local source (no proxy
+// fetch for ./pkg or ./gen/go). Keep this list in sync with every module that
+// has a go.mod and run `go work sync` after adding one.
+//
+use (
+	./gen/go
+	./pkg
+	./services/aggregators
+	./services/billing
+	./services/catalog
+	./services/connectorhub
+	./services/entitlements
+	./services/floor
+	./services/gateway
+	./services/identity
+	./services/kitchen
+	./services/notifications
+	./services/onboarding
+	./services/ordering
+	./services/payments
+	./services/promotions
+	./services/servicerequests
+	./services/settings
+	./services/staff
+	./services/tenant
+)

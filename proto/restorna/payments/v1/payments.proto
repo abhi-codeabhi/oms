@@ -1,0 +1,49 @@
+syntax = "proto3";
+package restorna.payments.v1;
+
+import "restorna/common/v1/common.proto";
+
+// PaymentsService orchestrates customer-facing money over ANY gateway
+// (Razorpay/Paytm/PhonePe/UPI) via connector-hub. One internal API; idempotent
+// intents; signed webhooks normalize to captured/failed; refunds + reconciliation.
+// billing-oms calls CreateIntent when a bill is settled by an online method.
+
+enum Status { STATUS_UNSPECIFIED = 0; CREATED = 1; PENDING = 2; CAPTURED = 3; FAILED = 4; REFUNDED = 5; }
+
+message Payment {
+  string id = 1;            // pay_...
+  string bill_id = 2;
+  restorna.common.v1.Money amount = 3;
+  string connector_id = 4;      // resolved provider
+  string provider_ref = 5;      // gateway order/txn id
+  Status status = 6;
+  string method = 7;            // upi|card|wallet|netbanking
+  string created_at = 8;
+}
+
+// Create a payment intent for a bill (idempotent by idempotency_key). Returns the
+// provider handoff (order id + any client params the customer app needs).
+message CreateIntentRequest {
+  string bill_id = 1;
+  restorna.common.v1.Money amount = 2;
+  string prefer_connector_id = 3;   // optional
+  string idempotency_key = 4;
+  string customer_contact = 5;      // phone/email for the gateway
+}
+message CreateIntentResponse { Payment payment = 1; map<string, string> handoff = 2; }
+
+message CaptureRequest { string payment_id = 1; }             // for auth+capture flows
+message CaptureResponse { Payment payment = 1; }
+message RefundRequest { string payment_id = 1; restorna.common.v1.Money amount = 2; string reason = 3; }
+message RefundResponse { Payment payment = 1; }
+message GetPaymentRequest { string payment_id = 1; }
+message GetPaymentResponse { Payment payment = 1; }
+
+service PaymentsService {
+  rpc CreateIntent(CreateIntentRequest) returns (CreateIntentResponse);
+  rpc Capture(CaptureRequest) returns (CaptureResponse);
+  rpc Refund(RefundRequest) returns (RefundResponse);
+  rpc GetPayment(GetPaymentRequest) returns (GetPaymentResponse);
+}
+// Consumes connector-hub webhook events -> updates payment status; emits
+// restorna.payments.captured.v1 / .failed.v1 (billing-oms reconciles the bill).

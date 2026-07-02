@@ -1,0 +1,117 @@
+# Umbrella values. Each service block is forwarded to that subchart (Helm
+# aliases the subchart name as the top-level key). Override per environment.
+#
+# Secrets: every service references a Secret named "<svc>-secrets" by default.
+# Create them out-of-band (sealed-secrets / external-secrets), or set
+# <svc>.secret.create=true with <svc>.secret.data for dev. They must carry:
+#   DATABASE_URL, NATS_URL, JWT_PUBLIC_KEY  (+ JWT_PRIVATE_KEY for identity)
+
+# ---- in-cluster infra (flip off to use managed Postgres/NATS/Redis) --------
+postgresql:
+  enabled: true
+  auth:
+    username: restorna
+    password: restorna
+    database: restorna
+nats:
+  enabled: true
+  config:
+    jetstream:
+      enabled: true
+redis:
+  enabled: true
+  architecture: standalone
+
+# ---- shared defaults applied to each service via its own values ------------
+# (Set image.tag globally in an overlay / --set, e.g. --set global.imageTag=sha-abc)
+global:
+  imageTag: ""
+
+gateway:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/gateway
+identity:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/identity
+tenant:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/tenant
+entitlements:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/entitlements
+staff:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/staff
+# settings/onboarding: charts exist; enable once images are published.
+settings:
+  enabled: false
+onboarding:
+  enabled: false
+
+# ---- M2 OMS data plane (order→kitchen→floor→billing choreography over NATS) --
+# Each service block forwards to its subchart. Inter-service URLs default to the
+# cluster-DNS Service names in each chart's values (serviceURLs); the event bus
+# (nats) above is a hard dependency for the OMS choreography.
+catalog:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/catalog
+ordering:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/ordering
+promotions:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/promotions
+kitchen:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/kitchen
+billing:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/billing
+floor:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/floor
+servicerequests:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/servicerequests
+
+# ---- M3 integration plane (connector framework over external providers) -----
+# Each block forwards to its subchart. Inter-service URLs default to cluster-DNS
+# Service names in each chart's values (serviceURLs). connectorhub additionally
+# needs CONNECTOR_KEK (32-byte KEK) in its connectorhub-secrets Secret — it
+# refuses to start without it (encrypts secret connector config at rest).
+connectorhub:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/connectorhub
+payments:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/payments
+notifications:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/notifications
+aggregators:
+  enabled: true
+  image:
+    repository: ghcr.io/restorna/aggregators
+
+# ---- ingress (gateway entrypoint). className/annotations set per overlay ----
+ingress:
+  enabled: false
+  className: ""          # e.g. nginx | traefik
+  host: "api.restorna.example"
+  annotations: {}        # cloud-specific cert/lb annotations live in overlays
+  tls: []
