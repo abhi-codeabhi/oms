@@ -8,7 +8,9 @@ FROM golang:1.22-alpine AS build
 WORKDIR /src
 
 # Copy the modules this service depends on via replace, then the service itself.
-COPY go.work* ./
+# NOTE: do NOT copy go.work here — it lists all 18 modules and would force
+# workspace mode, but only this service's source is in context. Building in
+# module mode uses the go.mod replace directives (../../pkg, ../../gen/go).
 COPY pkg/ ./pkg/
 COPY gen/ ./gen/
 COPY services/settings/ ./services/settings/

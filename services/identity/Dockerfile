@@ -10,16 +10,18 @@
 FROM golang:1.22-alpine AS build
 WORKDIR /src
 
-# Copy the workspace file and every module the build needs, preserving paths so
-# the `replace` directives and go.work resolve.
-COPY go.work go.work.sum* ./
+# Copy the sibling modules this service depends on via replace, then the service.
+# NOTE: do NOT copy go.work — it lists all 18 modules and would force workspace
+# mode while only this service's source is in context. Building in module mode
+# from the service dir uses the go.mod replace directives (../../pkg, ../../gen/go).
 COPY pkg/ ./pkg/
 COPY gen/ ./gen/
 COPY services/identity/ ./services/identity/
 
-# Warm the module cache, then build a static binary.
+# Build a static binary from the service module (module mode, not workspace).
+WORKDIR /src/services/identity
 ENV CGO_ENABLED=0 GOOS=linux
-RUN go build -trimpath -ldflags="-s -w" -o /out/identity ./services/identity/cmd/server
+RUN go build -trimpath -ldflags="-s -w" -o /out/identity ./cmd/server
 
 # ---- runtime stage ----
 # Distroless static + nonroot: minimal attack surface, no shell, UID 65532.
