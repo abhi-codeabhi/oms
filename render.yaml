@@ -1,22 +1,19 @@
-# Render Blueprint — proves the Restorna Platform runs on a non-Kubernetes PaaS.
-# Same images as everywhere else: each service is built from its Dockerfile with
-# the repo root as build context (the Dockerfiles depend on sibling ./pkg and
-# ./gen/go modules via go.work). Render injects $PORT; every service binds it.
+# Render Blueprint — M1 CONTROL PLANE ONLY (fits Render's 25-service account cap).
 #
-# All 18 services are deployed here: 7 M1 control-plane (identity, tenant,
-# entitlements, staff, settings, onboarding, gateway), 7 M2 OMS data-plane
-# (catalog, ordering, kitchen, floor, billing, promotions, servicerequests), and
-# 4 M3 integration-plane (connectorhub, payments, notifications, aggregators),
-# plus the React web console as a static site. The gateway is the only
-# internet-facing one in practice; the rest can be made private (type: pserv) if
-# you front everything through the gateway (public provider webhooks reach
-# connector-hub's IngestWebhook via the gateway).
+# This deploys the 7 control-plane services + Postgres + private NATS + the web
+# console = 10 resources. The full 18-service blueprint (adds the M2 OMS data
+# plane + M3 integration plane) is preserved in render.full.yaml — deploy it once
+# your account limit is raised or the internal services are made private.
 #
-# ⚠️ DB-PER-SERVICE: the blocks below point every service at the same Postgres for
-# convenience, but services share table names (outbox, processed_events, goose) and
-# WILL collide in one database. Before running: create one database per service
+# ⚠️ DB-PER-SERVICE: these blocks point every service at one Postgres for
+# convenience, but services share table names (outbox, goose_db_version) and WILL
+# collide in one database. Before running: create one database per service
 # (deploy/postgres/init-databases.sql) and override each service's DATABASE_URL to
 # its own db name. Full procedure + secrets + costs: RENDER_DEPLOY.md.
+#
+# Each service builds from its Dockerfile with the repo root as context (go.work
+# siblings). Render injects $PORT. When deploying from a connected repo, no `repo:`
+# key is needed — Render uses the repo the Blueprint lives in.
 #
 # Docs: https://render.com/docs/blueprint-spec
 
@@ -24,46 +21,38 @@ databases:
   - name: restorna-postgres
     databaseName: restorna
     user: restorna
-    plan: basic-256mb            # bump per environment
-    ipAllowList: []              # only Render services may connect
+    plan: basic-256mb
+    ipAllowList: []
 
 services:
-  # --- private NATS (JetStream) — internal only, not exposed to the internet ---
+  # --- private NATS (JetStream) ------------------------------------------------
   - type: pserv
     name: nats
     runtime: image
     image:
       url: docker.io/library/nats:2-alpine
     plan: starter
-    dockerCommand: "-js -m 8222"   # JetStream + monitoring
-    # Reachable by other services at: nats://nats:4222
+    dockerCommand: "-js -m 8222"
 
-  # --- identity ---------------------------------------------------------------
+  # --- identity ----------------------------------------------------------------
   - type: web
     name: identity
     runtime: docker
     dockerfilePath: ./services/identity/Dockerfile
-    dockerContext: .               # repo root — required for go.work siblings
+    dockerContext: .
     plan: starter
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
-      - key: APP_ENV
-        value: production
+      - { key: APP_ENV, value: production }
       - key: DATABASE_URL
-        fromDatabase:
-          name: restorna-postgres
-          property: connectionString
-      - key: NATS_URL
-        value: nats://nats:4222
-      - key: JWT_PUBLIC_KEY
-        sync: false                # set in dashboard / secret group
-      - key: JWT_PRIVATE_KEY
-        sync: false                # identity signs tokens; keep secret
-      - key: OTEL_EXPORTER_OTLP_ENDPOINT
-        sync: false
+        fromDatabase: { name: restorna-postgres, property: connectionString }
+      - { key: NATS_URL, value: nats://nats:4222 }
+      - { key: JWT_PUBLIC_KEY, sync: false }
+      - { key: JWT_PRIVATE_KEY, sync: false }
+      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
 
-  # --- tenant -----------------------------------------------------------------
+  # --- tenant ------------------------------------------------------------------
   - type: web
     name: tenant
     runtime: docker
@@ -73,30 +62,16 @@ services:
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
-      - key: APP_ENV
-        value: production
+      - { key: APP_ENV, value: production }
       - key: DATABASE_URL
-        fromDatabase:
-          name: restorna-postgres
-          property: connectionString
-      - key: NATS_URL
-        value: nats://nats:4222
-      - key: JWT_PUBLIC_KEY
-        sync: false
-      - key: IDENTITY_URL
-        fromService:
-          type: web
-          name: identity
-          property: hostport      # internal host:port
-      - key: ENTITLEMENTS_URL
-        fromService:
-          type: web
-          name: entitlements
-          property: hostport
-      - key: OTEL_EXPORTER_OTLP_ENDPOINT
-        sync: false
+        fromDatabase: { name: restorna-postgres, property: connectionString }
+      - { key: NATS_URL, value: nats://nats:4222 }
+      - { key: JWT_PUBLIC_KEY, sync: false }
+      - { key: IDENTITY_URL,     fromService: { type: web, name: identity,     property: hostport } }
+      - { key: ENTITLEMENTS_URL, fromService: { type: web, name: entitlements, property: hostport } }
+      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
 
-  # --- entitlements -----------------------------------------------------------
+  # --- entitlements ------------------------------------------------------------
   - type: web
     name: entitlements
     runtime: docker
@@ -106,25 +81,15 @@ services:
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
-      - key: APP_ENV
-        value: production
+      - { key: APP_ENV, value: production }
       - key: DATABASE_URL
-        fromDatabase:
-          name: restorna-postgres
-          property: connectionString
-      - key: NATS_URL
-        value: nats://nats:4222
-      - key: JWT_PUBLIC_KEY
-        sync: false
-      - key: TENANT_URL
-        fromService:
-          type: web
-          name: tenant
-          property: hostport
-      - key: OTEL_EXPORTER_OTLP_ENDPOINT
-        sync: false
+        fromDatabase: { name: restorna-postgres, property: connectionString }
+      - { key: NATS_URL, value: nats://nats:4222 }
+      - { key: JWT_PUBLIC_KEY, sync: false }
+      - { key: TENANT_URL, fromService: { type: web, name: tenant, property: hostport } }
+      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
 
-  # --- staff ------------------------------------------------------------------
+  # --- staff -------------------------------------------------------------------
   - type: web
     name: staff
     runtime: docker
@@ -134,35 +99,17 @@ services:
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
-      - key: APP_ENV
-        value: production
+      - { key: APP_ENV, value: production }
       - key: DATABASE_URL
-        fromDatabase:
-          name: restorna-postgres
-          property: connectionString
-      - key: NATS_URL
-        value: nats://nats:4222
-      - key: JWT_PUBLIC_KEY
-        sync: false
-      - key: IDENTITY_URL
-        fromService:
-          type: web
-          name: identity
-          property: hostport
-      - key: TENANT_URL
-        fromService:
-          type: web
-          name: tenant
-          property: hostport
-      - key: ENTITLEMENTS_URL
-        fromService:
-          type: web
-          name: entitlements
-          property: hostport
-      - key: OTEL_EXPORTER_OTLP_ENDPOINT
-        sync: false
+        fromDatabase: { name: restorna-postgres, property: connectionString }
+      - { key: NATS_URL, value: nats://nats:4222 }
+      - { key: JWT_PUBLIC_KEY, sync: false }
+      - { key: IDENTITY_URL,     fromService: { type: web, name: identity,     property: hostport } }
+      - { key: TENANT_URL,       fromService: { type: web, name: tenant,       property: hostport } }
+      - { key: ENTITLEMENTS_URL, fromService: { type: web, name: entitlements, property: hostport } }
+      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
 
-  # --- settings ---------------------------------------------------------------
+  # --- settings ----------------------------------------------------------------
   - type: web
     name: settings
     runtime: docker
@@ -179,7 +126,7 @@ services:
       - { key: JWT_PUBLIC_KEY, sync: false }
       - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
 
-  # --- onboarding (saga orchestrator → calls the other services) --------------
+  # --- onboarding --------------------------------------------------------------
   - type: web
     name: onboarding
     runtime: docker
@@ -201,7 +148,7 @@ services:
       - { key: SETTINGS_URL,     fromService: { type: web, name: settings,     property: hostport } }
       - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
 
-  # --- gateway (internet-facing edge + BFFs) ----------------------------------
+  # --- gateway (internet-facing edge + BFFs) -----------------------------------
   - type: web
     name: gateway
     runtime: docker
@@ -221,241 +168,7 @@ services:
       - { key: ONBOARDING_URL,   fromService: { type: web, name: onboarding,   property: hostport } }
       - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
 
-  # ===========================================================================
-  # M2 — Order Management System (OMS) data plane. Seven services that
-  # choreograph the order→kitchen→floor→billing lifecycle over NATS (the event
-  # bus is a hard dependency here: ordering/kitchen/floor/billing publish and
-  # consume domain events; the inter-service *_URL vars below are the synchronous
-  # request paths). Same image shape as M1: Dockerfile per service, repo-root
-  # build context, $PORT bound, /healthz health check, migrations on startup.
-  # ===========================================================================
-
-  # --- catalog (menu/items — DB + NATS only) ----------------------------------
-  - type: web
-    name: catalog
-    runtime: docker
-    dockerfilePath: ./services/catalog/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /healthz
-    autoDeploy: true
-    envVars:
-      - { key: APP_ENV, value: production }
-      - key: DATABASE_URL
-        fromDatabase: { name: restorna-postgres, property: connectionString }
-      - { key: NATS_URL, value: nats://nats:4222 }
-      - { key: JWT_PUBLIC_KEY, sync: false }
-      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
-
-  # --- ordering (order capture — DB + NATS only) ------------------------------
-  - type: web
-    name: ordering
-    runtime: docker
-    dockerfilePath: ./services/ordering/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /healthz
-    autoDeploy: true
-    envVars:
-      - { key: APP_ENV, value: production }
-      - key: DATABASE_URL
-        fromDatabase: { name: restorna-postgres, property: connectionString }
-      - { key: NATS_URL, value: nats://nats:4222 }
-      - { key: JWT_PUBLIC_KEY, sync: false }
-      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
-
-  # --- promotions (discounts/offers — DB + NATS only) -------------------------
-  - type: web
-    name: promotions
-    runtime: docker
-    dockerfilePath: ./services/promotions/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /healthz
-    autoDeploy: true
-    envVars:
-      - { key: APP_ENV, value: production }
-      - key: DATABASE_URL
-        fromDatabase: { name: restorna-postgres, property: connectionString }
-      - { key: NATS_URL, value: nats://nats:4222 }
-      - { key: JWT_PUBLIC_KEY, sync: false }
-      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
-
-  # --- kitchen (KDS — reads catalog) ------------------------------------------
-  - type: web
-    name: kitchen
-    runtime: docker
-    dockerfilePath: ./services/kitchen/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /healthz
-    autoDeploy: true
-    envVars:
-      - { key: APP_ENV, value: production }
-      - key: DATABASE_URL
-        fromDatabase: { name: restorna-postgres, property: connectionString }
-      - { key: NATS_URL, value: nats://nats:4222 }
-      - { key: JWT_PUBLIC_KEY, sync: false }
-      - { key: CATALOG_URL,    fromService: { type: web, name: catalog,    property: hostport } }
-      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
-
-  # --- billing (bills/payments — reads ordering, catalog, settings, promotions) ---
-  - type: web
-    name: billing
-    runtime: docker
-    dockerfilePath: ./services/billing/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /healthz
-    autoDeploy: true
-    envVars:
-      - { key: APP_ENV, value: production }
-      - key: DATABASE_URL
-        fromDatabase: { name: restorna-postgres, property: connectionString }
-      - { key: NATS_URL, value: nats://nats:4222 }
-      - { key: JWT_PUBLIC_KEY, sync: false }
-      - { key: ORDERING_URL,   fromService: { type: web, name: ordering,   property: hostport } }
-      - { key: CATALOG_URL,    fromService: { type: web, name: catalog,    property: hostport } }
-      - { key: SETTINGS_URL,   fromService: { type: web, name: settings,   property: hostport } }
-      - { key: PROMOTIONS_URL, fromService: { type: web, name: promotions, property: hostport } }
-      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
-
-  # --- floor (tables/waiter — reads kitchen, billing, settings, ordering) ------
-  - type: web
-    name: floor
-    runtime: docker
-    dockerfilePath: ./services/floor/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /healthz
-    autoDeploy: true
-    envVars:
-      - { key: APP_ENV, value: production }
-      - key: DATABASE_URL
-        fromDatabase: { name: restorna-postgres, property: connectionString }
-      - { key: NATS_URL, value: nats://nats:4222 }
-      - { key: JWT_PUBLIC_KEY, sync: false }
-      - { key: KITCHEN_URL,    fromService: { type: web, name: kitchen,    property: hostport } }
-      - { key: BILLING_URL,    fromService: { type: web, name: billing,    property: hostport } }
-      - { key: SETTINGS_URL,   fromService: { type: web, name: settings,   property: hostport } }
-      - { key: ORDERING_URL,   fromService: { type: web, name: ordering,   property: hostport } }
-      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
-
-  # --- servicerequests (call-waiter / escalation — reads settings) ------------
-  - type: web
-    name: servicerequests
-    runtime: docker
-    dockerfilePath: ./services/servicerequests/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /healthz
-    autoDeploy: true
-    envVars:
-      - { key: APP_ENV, value: production }
-      - key: DATABASE_URL
-        fromDatabase: { name: restorna-postgres, property: connectionString }
-      - { key: NATS_URL, value: nats://nats:4222 }
-      - { key: JWT_PUBLIC_KEY, sync: false }
-      - { key: SETTINGS_URL,   fromService: { type: web, name: settings,   property: hostport } }
-      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
-
-  # ===========================================================================
-  # M3 — Integration Plane. Four services that plug the platform into external
-  # providers through the connector framework: connector-hub is the registry +
-  # per-tenant config + capability routing + inbound-webhook ingestion;
-  # payments / notifications / aggregators resolve the active connector via
-  # connector-hub and call the concrete provider adapter (pkg/connectors). Same
-  # image shape as M1/M2: Dockerfile per service, repo-root build context, $PORT
-  # bound, /healthz, migrations on startup, NATS choreography + outbox relay.
-  # connector-hub encrypts secret connector config at rest under CONNECTOR_KEK.
-  # ===========================================================================
-
-  # --- connectorhub (connector registry + config + webhook ingestion) ---------
-  - type: web
-    name: connectorhub
-    runtime: docker
-    dockerfilePath: ./services/connectorhub/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /healthz
-    autoDeploy: true
-    envVars:
-      - { key: APP_ENV, value: production }
-      - key: DATABASE_URL
-        fromDatabase: { name: restorna-postgres, property: connectionString }
-      - { key: NATS_URL, value: nats://nats:4222 }
-      - { key: JWT_PUBLIC_KEY, sync: false }
-      - { key: ENTITLEMENTS_URL, fromService: { type: web, name: entitlements, property: hostport } }
-      # Key-Encryption-Key (32 bytes; base64/hex/raw) protecting secret connector
-      # config at rest (AES-256-GCM). The service refuses to start without it.
-      - key: CONNECTOR_KEK
-        generateValue: true
-      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
-
-  # --- payments (money over any gateway — resolves via connector-hub) ----------
-  - type: web
-    name: payments
-    runtime: docker
-    dockerfilePath: ./services/payments/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /healthz
-    autoDeploy: true
-    envVars:
-      - { key: APP_ENV, value: production }
-      - key: DATABASE_URL
-        fromDatabase: { name: restorna-postgres, property: connectionString }
-      - { key: NATS_URL, value: nats://nats:4222 }
-      - { key: JWT_PUBLIC_KEY, sync: false }
-      - { key: CONNECTORHUB_URL, fromService: { type: web, name: connectorhub, property: hostport } }
-      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
-
-  # --- notifications (SMS/WhatsApp/email/push — resolves via connector-hub) ----
-  - type: web
-    name: notifications
-    runtime: docker
-    dockerfilePath: ./services/notifications/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /healthz
-    autoDeploy: true
-    envVars:
-      - { key: APP_ENV, value: production }
-      - key: DATABASE_URL
-        fromDatabase: { name: restorna-postgres, property: connectionString }
-      - { key: NATS_URL, value: nats://nats:4222 }
-      - { key: JWT_PUBLIC_KEY, sync: false }
-      - { key: CONNECTORHUB_URL, fromService: { type: web, name: connectorhub, property: hostport } }
-      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
-
-  # --- aggregators (Zomato/Swiggy menu-out + orders-in → ordering) -------------
-  - type: web
-    name: aggregators
-    runtime: docker
-    dockerfilePath: ./services/aggregators/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /healthz
-    autoDeploy: true
-    envVars:
-      - { key: APP_ENV, value: production }
-      - key: DATABASE_URL
-        fromDatabase: { name: restorna-postgres, property: connectionString }
-      - { key: NATS_URL, value: nats://nats:4222 }
-      - { key: JWT_PUBLIC_KEY, sync: false }
-      - { key: CONNECTORHUB_URL, fromService: { type: web, name: connectorhub, property: hostport } }
-      - { key: CATALOG_URL,      fromService: { type: web, name: catalog,      property: hostport } }
-      - { key: ORDERING_URL,     fromService: { type: web, name: ordering,     property: hostport } }
-      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
-
-  # ===========================================================================
-  # Web console — the control-plane admin SPA (React + Vite). Built as a static
-  # site (npm run build → dist) and served from Render's CDN; the same three
-  # knobs (build command, publish dir, SPA rewrite) also map onto the standalone
-  # web/console/render.yaml (Netlify/Vercel/Cloudflare Pages/S3+CDN). Point
-  # VITE_GATEWAY_URL at the gateway's public URL and add this origin to the
-  # gateway's CORS_ALLOWED_ORIGINS.
-  # ===========================================================================
+  # --- web console (control-plane admin SPA) -----------------------------------
   - type: web
     name: restorna-console
     runtime: static
@@ -464,12 +177,7 @@ services:
     staticPublishPath: dist
     autoDeploy: true
     envVars:
-      # Baked into the bundle at build time (Vite inlines VITE_*). Set in the
-      # dashboard to the gateway's public URL, e.g. https://gateway.restorna.app.
-      - key: VITE_GATEWAY_URL
-        sync: false
+      # Set to the gateway's public URL in the dashboard (Vite bakes it at build).
+      - { key: VITE_GATEWAY_URL, sync: false }
     routes:
-      # SPA fallback so React Router deep links resolve.
-      - type: rewrite
-        source: /*
-        destination: /index.html
+      - { type: rewrite, source: /*, destination: /index.html }
