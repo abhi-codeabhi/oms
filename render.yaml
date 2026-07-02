@@ -42,7 +42,6 @@ services:
   - type: web
     name: identity
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/identity/Dockerfile
     dockerContext: .               # repo root — required for go.work siblings
     plan: starter
@@ -68,7 +67,6 @@ services:
   - type: web
     name: tenant
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/tenant/Dockerfile
     dockerContext: .
     plan: starter
@@ -102,7 +100,6 @@ services:
   - type: web
     name: entitlements
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/entitlements/Dockerfile
     dockerContext: .
     plan: starter
@@ -131,7 +128,6 @@ services:
   - type: web
     name: staff
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/staff/Dockerfile
     dockerContext: .
     plan: starter
@@ -170,7 +166,6 @@ services:
   - type: web
     name: settings
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/settings/Dockerfile
     dockerContext: .
     plan: starter
@@ -188,7 +183,6 @@ services:
   - type: web
     name: onboarding
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/onboarding/Dockerfile
     dockerContext: .
     plan: starter
@@ -211,7 +205,6 @@ services:
   - type: web
     name: gateway
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/gateway/Dockerfile
     dockerContext: .
     plan: starter
@@ -241,7 +234,6 @@ services:
   - type: web
     name: catalog
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/catalog/Dockerfile
     dockerContext: .
     plan: starter
@@ -259,7 +251,6 @@ services:
   - type: web
     name: ordering
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/ordering/Dockerfile
     dockerContext: .
     plan: starter
@@ -277,7 +268,6 @@ services:
   - type: web
     name: promotions
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/promotions/Dockerfile
     dockerContext: .
     plan: starter
@@ -295,7 +285,6 @@ services:
   - type: web
     name: kitchen
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/kitchen/Dockerfile
     dockerContext: .
     plan: starter
@@ -314,7 +303,6 @@ services:
   - type: web
     name: billing
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/billing/Dockerfile
     dockerContext: .
     plan: starter
@@ -336,7 +324,6 @@ services:
   - type: web
     name: floor
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/floor/Dockerfile
     dockerContext: .
     plan: starter
@@ -358,7 +345,6 @@ services:
   - type: web
     name: servicerequests
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/servicerequests/Dockerfile
     dockerContext: .
     plan: starter
@@ -388,7 +374,6 @@ services:
   - type: web
     name: connectorhub
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/connectorhub/Dockerfile
     dockerContext: .
     plan: starter
@@ -411,7 +396,6 @@ services:
   - type: web
     name: payments
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/payments/Dockerfile
     dockerContext: .
     plan: starter
@@ -430,7 +414,6 @@ services:
   - type: web
     name: notifications
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/notifications/Dockerfile
     dockerContext: .
     plan: starter
@@ -449,7 +432,6 @@ services:
   - type: web
     name: aggregators
     runtime: docker
-    repo: https://github.com/restorna/platform
     dockerfilePath: ./services/aggregators/Dockerfile
     dockerContext: .
     plan: starter
@@ -477,7 +459,6 @@ services:
   - type: web
     name: restorna-console
     runtime: static
-    repo: https://github.com/restorna/platform
     rootDir: web/console
     buildCommand: npm install && npm run build
     staticPublishPath: dist
